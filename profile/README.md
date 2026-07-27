@@ -1,60 +1,67 @@
 # Portolan
 
-**Publish geospatial data without the portal.**
+**A standard for cloud-native geospatial catalogs, the tools to build them, and the registry that connects them.**
 
-Portolan is an open-source toolkit for publishing geospatial data as cloud-native files on object storage. It combines [STAC](https://stacspec.org/), [GeoParquet](https://geoparquet.org/), and [Cloud-Optimized GeoTIFF](https://www.cogeo.org/) to let governments and open data publishers share spatial datasets at minimal cost — no servers, databases, or proprietary licenses required.
+Portolan publishes geospatial data as plain files on object storage, with no servers, no databases, and no proprietary licenses. Structured metadata lets a person or an agent read a catalog and query it directly. The standard sets the quality bar, a validator enforces it, tools make catalogs cheap to build, and a registry connects them into a network anyone can search.
 
 ## Why Portolan
 
-- **Open** — 100% open source (Apache-2.0), open formats, and open governance. Your data stays portable.
-- **Cost-effective** — Only pay for storage and egress. Small catalogs run for dollars a month.
-- **Sovereign** — Data lives in your buckets on AWS, GCS, Azure, MinIO, or any S3-compatible storage.
-- **Scalable** — Cloud-native formats serve range requests over petabyte-scale datasets. P95 latency under 120 ms globally.
-- **AI-ready** — STAC metadata is structured for retrieval and queryable by LLM agents.
-- **Tool-agnostic** — Query with DuckDB, Snowflake, BigQuery, Databricks, or Pandas — not just GIS tools.
+Spatial data infrastructure still assumes servers, databases, and specialists. Portolan doesn't.
 
-## How It Works
+- **Open and interoperable.** Everything is Apache-2.0 and built on existing standards: [STAC](https://stacspec.org/), [GeoParquet](https://geoparquet.org/), and [Cloud-Optimized GeoTIFF](https://www.cogeo.org/). These formats work across DuckDB, BigQuery, Pandas, and desktop GIS like QGIS and ArcGIS, so your data stays useful with or without Portolan.
+- **Readable by people and machines alike.** A catalog describes itself in plain text and structured metadata, so a person or an agent can find the data and query it without a bespoke API to learn.
+- **Simple.** A Portolan catalog is files in a bucket. Nothing runs, so nothing needs maintenance.
+- **Low cost.** The whole budget is storage plus egress, paid to your cloud provider, not to us.
+- **Sovereign.** Host on AWS, GCS, Azure, MinIO, Hetzner, Scaleway, or any S3-compatible storage. No foreign vendor sits between your agency and its data.
 
-Portolan converts local geospatial files (Shapefiles, GeoTIFFs, etc.) into cloud-native formats, validates them, and syncs the results to object storage as a STAC catalog:
+## How it works
 
+The CLI converts local geospatial files (Shapefiles, GeoTIFFs, and more) into cloud-native formats, validates them, and syncs the result to object storage as a STAC catalog:
+
+```bash
+portolan init
+portolan add demographics/
+portolan check --fix
+portolan push s3://my-catalog
 ```
-portolan ingest ./gov-data --to s3://my-catalog
-```
 
-The resulting catalog is browsable via standard URLs and queryable from any analytical tool that speaks Parquet or COG.
+The resulting catalog is browsable at standard URLs and queryable from any tool that speaks Parquet or COG. The same setup handles megabytes or terabytes, and passing the validator is what conformance means.
 
 ## Repositories
 
-### Core
-
-| Repository | Description | Language |
-|---|---|---|
-| [portolan](https://github.com/portolan-sdi/portolan) | Core tools for cloud-native geospatial SDI | TypeScript |
-| [portolan-cli](https://github.com/portolan-sdi/portolan-cli) | CLI for converting, validating, and syncing geospatial data to S3 catalogs | Python |
-| [portolan-spec](https://github.com/portolan-sdi/portolan-spec) | Spec and best practices for Portolan SDI | — |
-
-### Extensions
+### The standard
 
 | Repository | Description |
 |---|---|
-| [stac-iceberg-extension](https://github.com/portolan-sdi/stac-iceberg-extension) | STAC extension for Apache Iceberg table access and versioning metadata |
-| [stac-partition-extension](https://github.com/portolan-sdi/stac-partition-extension) | STAC extension for partitioned datasets |
-| [portolake](https://github.com/portolan-sdi/portolake) | Lakehouse-grade versioning for Portolan catalogs (Python) |
+| [portolan-spec](https://github.com/portolan-sdi/portolan-spec) | The Portolan specification. Ground truth for everything below. |
 
-### Applications
+### Implementations
 
 | Repository | Description | Language |
 |---|---|---|
-| [portolan-browser](https://github.com/portolan-sdi/portolan-browser) | UI for browsing and searching static STAC catalogs and STAC APIs | JavaScript |
+| [portolan-cli](https://github.com/portolan-sdi/portolan-cli) | CLI for building and publishing catalogs | Python |
+| [reis](https://github.com/portolan-sdi/reis) | Validator for Portolan catalogs | Python |
+| [portolan-registry](https://github.com/portolan-sdi/portolan-registry) | Registry of public Portolan catalogs | Python |
+| [portolan-browser](https://github.com/portolan-sdi/portolan-browser) | UI for browsing and searching catalogs | JavaScript |
 | [portolan-nl-demo](https://github.com/portolan-sdi/portolan-nl-demo) | Demo catalog browser for Netherlands data | JavaScript |
 
-### Tooling
+### STAC extensions
 
 | Repository | Description |
 |---|---|
+| [stac-partition-extension](https://github.com/portolan-sdi/stac-partition-extension) | Hive-style partition metadata for STAC Collections |
+| [stac-iceberg-extension](https://github.com/portolan-sdi/stac-iceberg-extension) | Apache Iceberg table access and versioning metadata |
+| [stac-osi-extension](https://github.com/portolan-sdi/stac-osi-extension) | Links STAC objects to an OSI (Apache Ossie) semantic model |
+
+### Tooling and coordination
+
+| Repository | Description |
+|---|---|
+| [portolan-data](https://github.com/portolan-sdi/portolan-data) | Tracking and coordination for official Portolan catalogs and mirrors |
 | [portolan-skills](https://github.com/portolan-sdi/portolan-skills) | Claude Code skills for working with Portolan catalogs |
 | [portolan-bootstrapper](https://github.com/portolan-sdi/portolan-bootstrapper) | Bootstrapping core open data for local use |
+| [portolan-ops](https://github.com/portolan-sdi/portolan-ops) | Org ground truth: copy, branding, norms, CI, templates |
 
-## Learn More
+## Learn more
 
-Visit [portolan-one.vercel.app](https://portolan-one.vercel.app/) for the full overview, architecture details, and getting started guide.
+Visit [portolan-sdi.org](https://www.portolan-sdi.org/) for the full overview, architecture details, and getting-started guide. Questions and discussion go to the [Portolan Google Group](https://groups.google.com/g/portolan) and the [Portolan channel](https://cloudnativegeo.slack.com/archives/C0A1JBH9529) in the Cloud-Native Geo Slack.
