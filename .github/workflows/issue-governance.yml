@@ -1,0 +1,86 @@
+# Reusable. Callers live at .github/workflows/issue-governance.yml in every
+# repo with issues enabled, synced from portolan-ops (ci/issue-governance.yml).
+#
+# Three rules, and nothing else. The issue goes on the org project board, a
+# newly opened issue with no milestone gets Backlog, and any label outside
+# the canonical set comes off with one comment saying so. Priority and triage
+# stay human work: this never adds a type label and never touches `urgent`.
+name: Issue governance
+
+on:
+  # This repo is both the definition and one of the repos governed, so it
+  # answers its own issue events here rather than carrying a caller at the
+  # same path.
+  issues:
+    types: [opened, edited, labeled]
+  workflow_call:
+    secrets:
+      # The board lives at org level, and GITHUB_TOKEN cannot write there.
+      # Both are optional so the milestone and label rules still run in a
+      # repo that cannot mint an app token. The board step then skips and
+      # says why, rather than failing the run.
+      OPS_SYNC_APP_CLIENT_ID:
+        required: false
+      OPS_SYNC_APP_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    permissions:
+      # Covers the label removal, the comment, and the milestone write.
+      issues: write
+    env:
+      # The secrets context is out of reach in a step `if`, so the presence
+      # test happens once here and the steps read it back off env.
+      HAS_APP_CREDENTIALS: ${{ secrets.OPS_SYNC_APP_CLIENT_ID != '' && secrets.OPS_SYNC_APP_KEY != '' }}
+    steps:
+      # The caller's repo is not what we want checked out: the config and
+      # the script live here, in portolan-sdi/.github.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: portolan-sdi/.github
+          ref: main
+          persist-credentials: false
+
+      # Scoped down to what the board add needs. An app permission this
+      # list omits is a permission the token lacks.
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        if: ${{ env.HAS_APP_CREDENTIALS == 'true' }}
+        continue-on-error: true
+        with:
+          client-id: ${{ secrets.OPS_SYNC_APP_CLIENT_ID }}
+          private-key: ${{ secrets.OPS_SYNC_APP_KEY }}
+          owner: portolan-sdi
+          repositories: ${{ github.event.repository.name }}
+          permission-issues: write
+          permission-organization-projects: write
+
+      # Idempotent: adding an item already on the board returns that item.
+      - uses: actions/add-to-project@5afcf98fcd03f1c2f92c3c83f58ae24323cc57fd # v2.0.0
+        if: ${{ steps.app-token.outputs.token != '' }}
+        with:
+          project-url: https://github.com/orgs/portolan-sdi/projects/1
+          github-token: ${{ steps.app-token.outputs.token }}
+
+      - name: Report a missing board token
+        if: ${{ steps.app-token.outputs.token == '' }}
+        run: |
+          echo "::warning::No app token available, so this issue was not" \
+            "added to the project board. Check that" \
+            "OPS_SYNC_APP_CLIENT_ID and OPS_SYNC_APP_KEY are organization" \
+            "secrets visible to this repository."
+
+      - name: Apply milestone and label rules
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          EVENT_ACTION: ${{ github.event.action }}
+          CONFIG_PATH: .github/issue-governance/allowed-labels.json
+          NORMS_URL: https://github.com/portolan-sdi/portolan-ops/blob/main/norms/repos.md#issue-labels-and-milestones
+        run: python3 .github/issue-governance/enforce.py
